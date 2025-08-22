@@ -207,13 +207,12 @@
     const chatBox = document.getElementById("chat-box");
     const sendBtn = document.getElementById("send-btn");
 
-    // Auto-focus on page load
     input.focus();
 
     function appendMessage(type, text, extraClass = "") {
       const div = document.createElement("div");
       div.className = `message ${type} ${extraClass}`;
-      div.textContent = text; // Safe: escapes HTML
+      div.textContent = text;
       chatBox.appendChild(div);
       chatBox.scrollTop = chatBox.scrollHeight;
       return div;
@@ -223,15 +222,16 @@
       return new Date().toLocaleString();
     }
 
+    // WeatherAPI.com integration
     async function getWeather(city) {
-      const apiKey = "c676b65c659ed4205611c94b8c80f98b"; // replace with your key
-      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+      const apiKey = "c676b65c659ed4205611c94b8c80f98b"; // Replace with your WeatherAPI key
+      const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`;
 
       try {
         const response = await fetch(url);
         if (!response.ok) throw new Error("City not found");
         const data = await response.json();
-        return `Weather in ${data.name}: ${data.weather[0].description}, Temp: ${data.main.temp}°C`;
+        return `Weather in ${data.location.name}: ${data.current.condition.text}, Temp: ${data.current.temp_c}°C, Humidity: ${data.current.humidity}%`;
       } catch (error) {
         return "Sorry, I couldn't get the weather info.";
       }
@@ -240,7 +240,6 @@
     async function sendMessage() {
       if (!input.value.trim()) return;
 
-      // Disable send button while processing
       sendBtn.disabled = true;
 
       const userMessage = input.value;
@@ -249,21 +248,25 @@
 
       const lowerMsg = userMessage.toLowerCase();
 
-      // Local quick replies
+      // Quick replies
       if (lowerMsg.includes("your name") || lowerMsg.includes("who are you")) {
         appendMessage("bot", "My name is Robo-bot, nice to meet you!");
         sendBtn.disabled = false;
         return;
       }
+
       if (lowerMsg.includes("date") || lowerMsg.includes("time")) {
         appendMessage("bot", "The current date & time is: " + getCurrentDate());
         sendBtn.disabled = false;
         return;
       }
+
       if (lowerMsg.includes("thank") || lowerMsg.includes("thanks")) {
         appendMessage("bot", "You're welcome! 😊");
+        sendBtn.disabled = false;
         return;
       }
+
       if (lowerMsg.includes("weather")) {
         let city = prompt("Enter your city for weather info:");
         if (city) {
@@ -277,7 +280,7 @@
         return;
       }
 
-      // Show typing indicator
+      // Typing indicator
       const typingDiv = appendMessage("bot", "Robo-bot is typing...", "typing");
 
       try {
@@ -287,13 +290,8 @@
           body: JSON.stringify({ message: userMessage }),
         });
         const data = await res.json();
-
-        // Remove typing indicator
         chatBox.removeChild(typingDiv);
-
-        if (data.aiReply) {
-          appendMessage("bot", data.aiReply);
-        }
+        if (data.aiReply) appendMessage("bot", data.aiReply);
       } catch (err) {
         chatBox.removeChild(typingDiv);
         appendMessage("bot", "⚠️ Error: Could not connect to server.");
