@@ -11,7 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// --- Sentry Monitoring (optional but recommended) ---
+// --- Sentry Monitoring (optional) ---
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN });
   app.use(Sentry.Handlers.requestHandler());
@@ -19,9 +19,9 @@ if (process.env.SENTRY_DSN) {
 
 // --- Rate Limiting ---
 const limiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute window
-  max: 10,             // max 10 requests per IP per minute
-  message: { error: "⚠️ Too many requests, please try again later." },
+  windowMs: 60 * 1000, // 1 min
+  max: 10,             // 10 req/min per IP
+  message: { error: "⚠️ Too many requests, slow down." },
 });
 app.use("/api/", limiter);
 
@@ -43,21 +43,18 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 /**
  * POST /api/chat
- * Validate → Ask Gemini → Save to Firestore
  */
 app.post("/api/chat", async (req, res) => {
   try {
     let message = (req.body?.message || "").trim();
 
-    // --- Validation ---
     if (!message) {
       return res.status(400).json({ error: "Message is required." });
     }
     if (message.length > 500) {
-      return res.status(400).json({ error: "Message too long (max 500 characters)." });
+      return res.status(400).json({ error: "Message too long (max 500 chars)." });
     }
 
-    // --- Build Gemini request ---
     const parts = [{ text: message }];
     let aiReply = "🤖 No reply.";
 
@@ -72,7 +69,6 @@ app.post("/api/chat", async (req, res) => {
       return res.status(502).json({ error: "AI service failed." });
     }
 
-    // --- Save to Firestore ---
     const docRef = await db.collection("messages").add({
       userMessage: message,
       aiReply,
@@ -89,7 +85,6 @@ app.post("/api/chat", async (req, res) => {
 
 /**
  * GET /api/chat
- * Fetch chat history
  */
 app.get("/api/chat", async (req, res) => {
   try {
@@ -103,10 +98,17 @@ app.get("/api/chat", async (req, res) => {
   }
 });
 
-// --- Sentry Error Handler (after routes) ---
+// --- Sentry error handler ---
 if (process.env.SENTRY_DSN) {
   app.use(Sentry.Handlers.errorHandler());
 }
 
-// ⚠️ Export handler for Vercel
-module.exports = app;
+// --- ✅ Dual mode: Local & Vercel ---
+if (require.main === module) {
+  // running locally
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+} else {
+  // running on Vercel
+  module.exports = app;
+}
