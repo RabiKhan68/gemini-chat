@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robo-bot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            background: #fff;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-container h1 {
+            text-align: center;
+            padding: 20px;
+            background: #0078ff;
+            color: white;
+            margin: 0;
+            font-size: 1.5em;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .chat-box {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message {
+            margin: 8px 0;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 75%;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        .user {
+            background: #0078ff;
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot {
+            background: #e0e0e0;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+
+        .input-box {
+            display: flex;
+            border-top: 1px solid #ddd;
+            background: #fafafa;
+            padding: 10px;
+            align-items: center;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            outline: none;
+            border-radius: 20px;
+            background: #f1f1f1;
+            margin-right: 10px;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            background: #0078ff;
+            color: white;
+            border: none;
+            padding: 10px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        button {
+            background: #0078ff;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: #005ecc;
+        }
+
+        .chat-box::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #bbb;
+            border-radius: 3px;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <h1>Hey There! How can I help you?</h1>
+        <div id="chat-box" class="chat-box"></div>
+        <div class="input-box">
+            <label for="image-input" class="file-label">📷</label>
+            <input id="image-input" type="file" accept="image/*" capture="environment">
+            <input id="user-input" type="text" placeholder="Type a message...">
+            <button onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <script>
+        function getCurrentDate() {
+            return new Date().toLocaleString();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById("user-input");
+            const imageInput = document.getElementById("image-input");
+            const chatBox = document.getElementById("chat-box");
+
+            if (!input.value.trim() && !imageInput.files.length) return;
+
+            const userMessage = input.value || "[📷 Sent an image]";
+            chatBox.insertAdjacentHTML("beforeend", `<div class="message user">${userMessage}</div>`);
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+            const formData = new FormData();
+            formData.append("message", input.value);
+            if (imageInput.files.length > 0) formData.append("image", imageInput.files[0]);
+
+            input.value = "";
+            imageInput.value = "";
+
+            // Custom bot replies (local shortcuts)
+            const lowerMsg = userMessage.toLowerCase();
+            if (lowerMsg.includes("your name") || lowerMsg.includes("who are you")) {
+                chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">My name is Robo-bot, nice to meet you!</div>`);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                return;
+            }
+            if (lowerMsg.includes("date") || lowerMsg.includes("time")) {
+                chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">The current date & time is: ${getCurrentDate()}</div>`);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                return;
+            }
+
+            try {
+                const res = await fetch("/api/chat", { method: "POST", body: formData });
+                const data = await res.json();
+
+                if (data.aiReply) {
+                    chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">${data.aiReply}</div>`);
+                }
+                if (data.image) {
+                    chatBox.insertAdjacentHTML("beforeend", `<div class="message bot"><img src="${data.image}" alt="Uploaded image" style="max-width:100%; border-radius:8px;"></div>`);
+                }
+            } catch (err) {
+                chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">⚠️ Error: Could not connect to server.</div>`);
+            }
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        document.getElementById("user-input").addEventListener("keypress", function (event) {
+            if (event.key === "Enter") { event.preventDefault(); sendMessage(); }
+        });
+    </script>
+</body>
+
+</html>
