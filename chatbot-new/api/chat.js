@@ -1,6 +1,5 @@
 const express = require("express");
 const cors = require("cors");
-const multer = require("multer");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
@@ -10,9 +9,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Multer memory storage (so files stay in RAM, not disk)
-const upload = multer({ storage: multer.memoryStorage() });
-
 // Firebase init
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -21,12 +17,10 @@ if (!admin.apps.length) {
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
       privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
     }),
-    storageBucket: `${process.env.FIREBASE_PROJECT_ID}.appspot.com`,
   });
 }
 
 const db = admin.firestore();
-const bucket = admin.storage().bucket();
 
 // Gemini init
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -34,29 +28,18 @@ const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
 
 /**
  * POST /api/chat
- * Accepts text + optional image, uploads image to Firebase Storage,
- * asks Gemini for a response, and saves to Firestore.
+ * Accepts text only, asks Gemini for a response, and saves to Firestore.
  */
-app.post("/api/chat", upload.single("image"), async (req, res) => {
+app.post("/api/chat", async (req, res) => {
   try {
     const message = req.body?.message || "";
-    const imageFile = req.file;
 
-    if (!message && !imageFile) {
-      return res.status(400).json({ aiReply: "⚠️ No message or image provided." });
+    if (!message) {
+      return res.status(400).json({ aiReply: "⚠️ No message provided." });
     }
 
-    // Build Gemini request parts
-    const parts = [];
-    if (message) parts.push({ text: message });
-    if (imageFile) {
-      parts.push({
-        inlineData: {
-          data: imageFile.buffer.toString("base64"),
-          mimeType: imageFile.mimetype,
-        },
-      });
-    }
+    // Build Gemini request
+    const parts = [{ text: message }];
 
     // Call Gemini
     const result = await model.generateContent({
@@ -64,27 +47,9 @@ app.post("/api/chat", upload.single("image"), async (req, res) => {
     });
     const aiReply = result?.response?.text?.() || "🤖 No reply.";
 
-    // Upload image to Firebase Storage (if any)
-    let imageURL = null;
-    if (imageFile) {
-      const fileName = `images/${Date.now()}_${imageFile.originalname}`;
-      const file = bucket.file(fileName);
-
-      await file.save(imageFile.buffer, {
-        metadata: { contentType: imageFile.mimetype },
-        resumable: false,
-      });
-
-      // Make file public
-      await file.makePublic();
-      imageURL = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-      console.log("✅ Uploaded image:", imageURL);
-    }
-
     // Save to Firestore
     const docRef = await db.collection("messages").add({
       userMessage: message,
-      image: imageURL,
       aiReply,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -92,7 +57,6 @@ app.post("/api/chat", upload.single("image"), async (req, res) => {
     res.json({
       id: docRef.id,
       userMessage: message,
-      image: imageURL,
       aiReply,
     });
   } catch (err) {
