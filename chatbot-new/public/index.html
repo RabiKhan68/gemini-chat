@@ -265,8 +265,14 @@
         return;
       }
       if (lowerMsg.includes("weather")) {
-        
-        appendMessage("The current weather is: " + await getWeather(city));
+        let city = prompt("Enter your city for weather info:");
+        if (city) {
+          appendMessage("bot", "Fetching weather info...");
+          const weatherMsg = await getWeather(city);
+          appendMessage("bot", weatherMsg);
+        } else {
+          appendMessage("bot", "You didn't enter a city.");
+        }
         sendBtn.disabled = false;
         return;
       }
