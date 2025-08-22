@@ -234,20 +234,6 @@
       }
     }
 
-    // List of words to censor
-    const bannedWords = ["fuck", "cunt", "damn", "stupid", "bullshit", "nigga", "rape", "asshole", "tits", "penis", "pussy"];
-
-    // Function to check & censor
-    function censorMessage(message) {
-      let censored = message;
-      bannedWords.forEach(word => {
-        // Create regex to match whole words, case-insensitive
-        const regex = new RegExp(`\\b${word}\\b`, "gi");
-        censored = censored.replace(regex, "***");
-      });
-      return censored;
-    }
-
     async function sendMessage() {
       if (!input.value.trim()) return;
 
@@ -295,20 +281,6 @@
         sendBtn.disabled = false;
         return;
       }
-
-      userMessage = input.value.trim();
-
-      // Censor message
-      userMessage = censorMessage(userMessage);
-
-      // Optionally: warn the user if it contained bad words
-      if (userMessage.includes("***")) {
-        appendMessage("bot", "⚠️ Your message contained sensitive words and was modified.");
-      }
-
-      appendMessage("user", userMessage);
-      input.value = "";
-
 
       // Typing indicator
       const typingDiv = appendMessage("bot", "Robo-bot is typing...", "typing");
