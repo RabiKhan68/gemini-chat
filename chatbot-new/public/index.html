@@ -223,6 +223,20 @@
       return new Date().toLocaleString();
     }
 
+    async function getWeather(city) {
+      const apiKey = "f041ab971fc5e8d46c5956251c08b47e"; // replace with your key
+      const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${apiKey}`;
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("City not found");
+        const data = await response.json();
+        return `Weather in ${data.name}: ${data.weather[0].description}, Temp: ${data.main.temp}°C`;
+      } catch (error) {
+        return "Sorry, I couldn't get the weather info.";
+      }
+    }
+
     async function sendMessage() {
       if (!input.value.trim()) return;
 
@@ -243,6 +257,16 @@
       }
       if (lowerMsg.includes("date") || lowerMsg.includes("time")) {
         appendMessage("bot", "The current date & time is: " + getCurrentDate());
+        sendBtn.disabled = false;
+        return;
+      }
+      if (lowerMsg.includes("thank") || lowerMsg.includes("thanks")) {
+        appendMessage("bot", "You're welcome! 😊");
+        return;
+      }
+      if (lowerMsg.includes("weather")) {
+        
+        appendMessage("The current weather is: " + await getWeather(city));
         sendBtn.disabled = false;
         return;
       }
