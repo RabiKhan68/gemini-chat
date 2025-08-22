@@ -84,6 +84,11 @@
       font-weight: bold;
     }
 
+    .typing {
+      font-style: italic;
+      opacity: 0.8;
+    }
+
     .input-box {
       display: flex;
       border-top: 1px solid rgba(0, 200, 255, 0.3);
@@ -120,7 +125,12 @@
       box-shadow: 0 0 10px rgba(0, 200, 255, 0.5);
     }
 
-    button:hover {
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    button:hover:enabled {
       background: linear-gradient(135deg, #0072ff, #00c6ff);
       transform: scale(1.1);
       box-shadow: 0 0 20px rgba(0, 200, 255, 0.8);
@@ -180,7 +190,6 @@
       }
     }
   </style>
-
 </head>
 
 <body>
@@ -189,39 +198,57 @@
     <div id="chat-box" class="chat-box"></div>
     <div class="input-box">
       <input id="user-input" type="text" placeholder="Type a message...">
-      <button onclick="sendMessage()">Send</button>
+      <button id="send-btn" onclick="sendMessage()">Send</button>
     </div>
   </div>
 
   <script>
+    const input = document.getElementById("user-input");
+    const chatBox = document.getElementById("chat-box");
+    const sendBtn = document.getElementById("send-btn");
+
+    // Auto-focus on page load
+    input.focus();
+
+    function appendMessage(type, text, extraClass = "") {
+      const div = document.createElement("div");
+      div.className = `message ${type} ${extraClass}`;
+      div.textContent = text; // Safe: escapes HTML
+      chatBox.appendChild(div);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return div;
+    }
+
     function getCurrentDate() {
       return new Date().toLocaleString();
     }
 
     async function sendMessage() {
-      const input = document.getElementById("user-input");
-      const chatBox = document.getElementById("chat-box");
-
       if (!input.value.trim()) return;
 
-      const userMessage = input.value;
-      chatBox.insertAdjacentHTML("beforeend", `<div class="message user">${userMessage}</div>`);
-      chatBox.scrollTop = chatBox.scrollHeight;
+      // Disable send button while processing
+      sendBtn.disabled = true;
 
+      const userMessage = input.value;
+      appendMessage("user", userMessage);
       input.value = "";
 
-      // Custom bot replies (local shortcuts)
       const lowerMsg = userMessage.toLowerCase();
+
+      // Local quick replies
       if (lowerMsg.includes("your name") || lowerMsg.includes("who are you")) {
-        chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">My name is Robo-bot, nice to meet you!</div>`);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        appendMessage("bot", "My name is Robo-bot, nice to meet you!");
+        sendBtn.disabled = false;
         return;
       }
       if (lowerMsg.includes("date") || lowerMsg.includes("time")) {
-        chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">The current date & time is: ${getCurrentDate()}</div>`);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        appendMessage("bot", "The current date & time is: " + getCurrentDate());
+        sendBtn.disabled = false;
         return;
       }
+
+      // Show typing indicator
+      const typingDiv = appendMessage("bot", "Robo-bot is typing...", "typing");
 
       try {
         const res = await fetch("/api/chat", {
@@ -231,18 +258,25 @@
         });
         const data = await res.json();
 
+        // Remove typing indicator
+        chatBox.removeChild(typingDiv);
+
         if (data.aiReply) {
-          chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">${data.aiReply}</div>`);
+          appendMessage("bot", data.aiReply);
         }
       } catch (err) {
-        chatBox.insertAdjacentHTML("beforeend", `<div class="message bot">⚠️ Error: Could not connect to server.</div>`);
+        chatBox.removeChild(typingDiv);
+        appendMessage("bot", "⚠️ Error: Could not connect to server.");
       }
 
-      chatBox.scrollTop = chatBox.scrollHeight;
+      sendBtn.disabled = false;
     }
 
-    document.getElementById("user-input").addEventListener("keypress", function (event) {
-      if (event.key === "Enter") { event.preventDefault(); sendMessage(); }
+    input.addEventListener("keypress", function (event) {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+      }
     });
   </script>
 </body>
