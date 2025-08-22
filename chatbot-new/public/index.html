@@ -289,25 +289,26 @@
           return;
         }
 
-        let userMessage = input.value.trim();
-
-        // Censor message
-        userMessage = censorMessage(userMessage);
-
-        // Optionally: warn the user if it contained bad words
-        if (userMessage.includes("***")) {
-          appendMessage("bot", "⚠️ Your message contained sensitive words and was modified.");
-        }
-
-        appendMessage("user", userMessage);
-        input.value = "";
-
         appendMessage("bot", `Fetching weather info for ${city}...`);
         const weatherMsg = await getWeather(city);
         appendMessage("bot", weatherMsg);
         sendBtn.disabled = false;
         return;
       }
+
+      userMessage = input.value.trim();
+
+      // Censor message
+      userMessage = censorMessage(userMessage);
+
+      // Optionally: warn the user if it contained bad words
+      if (userMessage.includes("***")) {
+        appendMessage("bot", "⚠️ Your message contained sensitive words and was modified.");
+      }
+
+      appendMessage("user", userMessage);
+      input.value = "";
+
 
       // Typing indicator
       const typingDiv = appendMessage("bot", "Robo-bot is typing...", "typing");
