@@ -222,19 +222,30 @@
       return new Date().toLocaleString();
     }
 
-    // WeatherAPI.com integration
     async function getWeather(city) {
-      const apiKey = "c676b65c659ed4205611c94b8c80f98b"; // Replace with your WeatherAPI key
-      const url = `https://api.weatherapi.com/v1/current.json?key=${apiKey}&q=${city}&aqi=no`;
-
       try {
-        const response = await fetch(url);
+        const response = await fetch(`https://wttr.in/${city}?format=j1`);
         if (!response.ok) throw new Error("City not found");
         const data = await response.json();
-        return `Weather in ${data.location.name}: ${data.current.condition.text}, Temp: ${data.current.temp_c}°C, Humidity: ${data.current.humidity}%`;
+        const current = data.current_condition[0];
+        return `Weather in ${city}: ${current.weatherDesc[0].value}, Temp: ${current.temp_C}°C, Humidity: ${current.humidity}%`;
       } catch (error) {
         return "Sorry, I couldn't get the weather info.";
       }
+    }
+
+    // List of words to censor
+    const bannedWords = ["fuck", "cunt", "damn", "stupid", "bullshit", "nigga", "rape", "asshole", "tits", "penis", "pussy"];
+
+    // Function to check & censor
+    function censorMessage(message) {
+      let censored = message;
+      bannedWords.forEach(word => {
+        // Create regex to match whole words, case-insensitive
+        const regex = new RegExp(`\\b${word}\\b`, "gi");
+        censored = censored.replace(regex, "***");
+      });
+      return censored;
     }
 
     async function sendMessage() {
@@ -268,14 +279,32 @@
       }
 
       if (lowerMsg.includes("weather")) {
-        let city = prompt("Enter your city for weather info:");
-        if (city) {
-          appendMessage("bot", "Fetching weather info...");
-          const weatherMsg = await getWeather(city);
-          appendMessage("bot", weatherMsg);
-        } else {
-          appendMessage("bot", "You didn't enter a city.");
+        // Try to extract the city from the message
+        const match = userMessage.match(/weather in (.+)/i);
+        let city = match ? match[1].trim() : null;
+
+        if (!city) {
+          appendMessage("bot", "Please specify a city, like 'What's the weather in London?'");
+          sendBtn.disabled = false;
+          return;
         }
+
+        let userMessage = input.value.trim();
+
+        // Censor message
+        userMessage = censorMessage(userMessage);
+
+        // Optionally: warn the user if it contained bad words
+        if (userMessage.includes("***")) {
+          appendMessage("bot", "⚠️ Your message contained sensitive words and was modified.");
+        }
+
+        appendMessage("user", userMessage);
+        input.value = "";
+
+        appendMessage("bot", `Fetching weather info for ${city}...`);
+        const weatherMsg = await getWeather(city);
+        appendMessage("bot", weatherMsg);
         sendBtn.disabled = false;
         return;
       }
