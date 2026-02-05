@@ -24,13 +24,13 @@ const db = admin.firestore();
 
 // Gemini init
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
 
 /**
  * POST /api/chat
  * Accepts text only, asks Gemini for a response, and saves to Firestore.
  */
-app.post("/api/chat", async (req, res) => {
+app.post("/", async (req, res) => {
   try {
     const message = req.body?.message || "";
 
@@ -54,6 +54,10 @@ app.post("/api/chat", async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    if (message.length > 2000) {
+  return res.status(400).json({ aiReply: "⚠️ Message too long." });
+}
+
     res.json({
       id: docRef.id,
       userMessage: message,
@@ -69,7 +73,7 @@ app.post("/api/chat", async (req, res) => {
  * GET /api/chat
  * Fetch all previous messages from Firestore
  */
-app.get("/api/chat", async (req, res) => {
+app.get("/", async (req, res) => {
   try {
     const snapshot = await db.collection("messages").orderBy("createdAt", "asc").get();
     const messages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
