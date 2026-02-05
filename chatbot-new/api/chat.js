@@ -30,7 +30,7 @@ const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
  * POST /api/chat
  * Accepts text only, asks Gemini for a response, and saves to Firestore.
  */
-app.post("/api/chat", async (req, res) => {
+app.post("/", async (req, res) => {
   try {
     const message = req.body?.message || "";
 
@@ -73,7 +73,7 @@ app.post("/api/chat", async (req, res) => {
  * GET /api/chat
  * Fetch all previous messages from Firestore
  */
-app.get("/api/chat", async (req, res) => {
+app.get("/", async (req, res) => {
   try {
     const snapshot = await db.collection("messages").orderBy("createdAt", "asc").get();
     const messages = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
