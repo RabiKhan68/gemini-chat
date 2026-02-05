@@ -54,6 +54,10 @@ app.post("/api/chat", async (req, res) => {
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
+    if (message.length > 2000) {
+  return res.status(400).json({ aiReply: "⚠️ Message too long." });
+}
+
     res.json({
       id: docRef.id,
       userMessage: message,
